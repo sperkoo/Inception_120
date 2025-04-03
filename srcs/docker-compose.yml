@@ -1,0 +1,109 @@
+services:
+  mariadb:
+    image: mariadb:v_inception
+    build: 
+      context: requirements/mariadb
+    container_name: mariadb
+    volumes:
+      - mariadb_volume:/var/lib/mysql
+    networks:
+      - inception_net
+    expose:
+      - "3306"
+    env_file:
+      - .env
+    restart: always
+
+  wordpress:
+    image: wordpress:v_inception
+    build: requirements/wordpress
+    container_name: wordpress
+    volumes:
+      - wordpress_volume:/var/www/html
+    depends_on:
+      - mariadb
+    networks:
+      - inception_net
+    expose:
+      - "9000"
+    env_file:
+      - .env
+    restart: always
+
+  nginx:
+    image: nginx:v_inception
+    build: 
+      context: requirements/nginx
+    container_name: nginx
+    volumes:
+      - wordpress_volume:/var/www/html
+    depends_on:
+      - wordpress
+    networks:
+      - inception_net
+    ports:
+      - "443:443"
+    restart: always
+
+  adminer:
+    container_name: adminer
+    build: ./requirements/bonus/adminer/.
+    image: adminer:v_inception
+    depends_on:
+      - mariadb
+    networks:
+      - inception_net
+    restart: always
+    volumes:
+     - wordpress_volume:/var/www/html
+
+  cadvisor:
+    container_name: cadvisor
+    build: ./requirements/bonus/cadvisor/.
+    image: cadvisor:v_inception
+    ports:
+      - "8080:8080"
+    networks:
+      - inception_net
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro 
+      - /sys:/sys:ro 
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+
+  staticweb:
+    container_name: website
+    build: ./requirements/bonus/staticweb
+    image: website:v_inception
+    ports:
+      - "801:80"
+    networks:
+      - inception_net
+    restart: always
+
+  redis:
+    build: ./requirements/bonus/redis
+    image: redis:v_inception
+    container_name: redis
+    networks:
+      - inception_net
+    restart: always
+
+volumes:
+  wordpress_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../home/absalah/data/wordpress
+  mariadb_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../home/absalah/data/mariadb
+
+networks:
+  inception_net:
+    driver: bridge
